@@ -1,0 +1,49 @@
+keyspace: stress_tntz
+
+keyspace_definition: |
+ CREATE KEYSPACE stress_tntz WITH replication = {'class': 'SimpleStrategy', 'replication_factor': 1};
+
+table: job
+
+table_definition: |
+    CREATE TABLE job (
+      lot text,
+      gtin text,
+      machine text,
+      all_serials set<text>,
+      good_read_serial set<text>,
+      PRIMARY KEY(lot, gtin, machine)
+    )
+
+columnspec:
+  - name: lot
+    size: fixed(32) # The lot having contant in 32 characters
+    population: uniform(1..10) # 10 possible values
+  - name: gtin
+    size: fixed(32)
+    cluster: uniform(20..50) # Staff members do between 20 and 500 events
+    population: uniform(1..10) # 10 possible values
+  - name: machine
+    size: normal(10..100,50)
+    population: uniform(1..10) # 10 possible values
+    cluster: uniform(20..50) # Staff members do between 20 and 500 events
+  - name: all_serials
+    size: uniform(80000..100000)
+    population: uniform(80000..100000) # 10 possible values
+    cluster: uniform(80000..100000) # Staff members do between 20 and 500 events
+
+insert:
+  # How many partition to insert per batch
+  partitions: fixed(1)
+  # How many rows to update per partition
+  select: fixed(1)/500
+  # UNLOGGED or LOGGED batch for insert
+  batchtype: UNLOGGED
+
+queries:
+   events:
+      cql: select *  from job where lot = ? and gtin = ? and machine = ?
+      fields: samerow
+   latest_event:
+      cql: select * from job where lot = ? and gtin = ? and machine = ?  LIMIT 1
+      fields: samerow
